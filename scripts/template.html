@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f5f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>TCF Schools Map</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2230%22 fill=%22%230f5f5c%22/%3E%3Cpath d=%22M32 14 12 24l20 10 20-10z M20 30v10c0 4 6 8 12 8s12-4 12-8V30l-12 6z%22 fill=%22%23fff%22/%3E%3C/svg%3E">
+<style>/*__LEAFLET_CSS__*/</style>
+<style>
+:root{
+  --brand:#0f5f5c; --brand-2:#e6f2f1; --ink:#14201f; --muted:#5b6b69; --line:#e3e8e7;
+  --prim:#2563eb; --sec:#ea580c; --bg:#fff; --shadow:0 6px 24px rgba(0,0,0,.16);
+  --sat: env(safe-area-inset-top,0px); --sab: env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#dfe7e6;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+#map{position:fixed;inset:0;z-index:0}
+.leaflet-container{font:inherit;background:#e8eeee}
+
+/* ---------- top bar ---------- */
+.top{position:fixed;z-index:900;left:0;right:0;top:0;padding:calc(10px + var(--sat)) 10px 0;pointer-events:none}
+.top-row{display:flex;gap:8px;max-width:640px;margin:0 auto;pointer-events:auto}
+.search{flex:1;display:flex;align-items:center;background:#fff;border-radius:14px;box-shadow:var(--shadow);height:48px;padding:0 6px 0 12px;min-width:0}
+.search svg{flex:none;color:var(--muted)}
+.search input{flex:1;min-width:0;border:0;outline:0;font-size:16px;padding:0 8px;height:100%;background:transparent;color:var(--ink)}
+.search input::placeholder{color:#8a9896}
+.search input::-webkit-search-cancel-button,.search input::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+.icon-btn{flex:none;width:48px;height:48px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow);display:grid;place-items:center;position:relative}
+.clear{width:36px;height:36px;border:0;background:transparent;border-radius:10px;display:none;place-items:center;color:var(--muted)}
+.clear.show{display:grid}
+.badge{position:absolute;top:6px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--sec);color:#fff;font-size:11px;font-weight:700;display:none;place-items:center;padding:0 5px}
+.badge.show{display:grid}
+.status{max-width:640px;margin:8px auto 0;display:flex;justify-content:center;pointer-events:none}
+.pill{pointer-events:auto;background:rgba(255,255,255,.95);border-radius:999px;padding:6px 12px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;gap:8px;align-items:center}
+.pill b{color:var(--brand)}
+.pill button{border:0;background:var(--brand-2);color:var(--brand);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
+.suggest{max-width:640px;margin:8px auto 0;background:#fff;border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:none;pointer-events:auto;max-height:min(60dvh,420px);overflow-y:auto}
+.suggest.show{display:block}
+.sg{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:#fff;padding:11px 14px;border-top:1px solid var(--line)}
+.sg:first-child{border-top:0}
+.sg:active{background:var(--brand-2)}
+.sg .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg .s{font-size:12.5px;color:var(--muted)}
+.sg .tx{min-width:0;flex:1}
+.sg.all{color:var(--brand);font-weight:600;justify-content:center}
+
+/* ---------- floating buttons ---------- */
+.fabs{position:fixed;z-index:800;right:12px;bottom:calc(28px + var(--sab));display:flex;flex-direction:column;gap:10px}
+.fab{width:50px;height:50px;border:0;border-radius:50%;background:#fff;box-shadow:var(--shadow);display:grid;place-items:center;color:var(--ink)}
+.fab.on{color:#fff;background:var(--brand)}
+.fab.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legend{position:fixed;z-index:800;left:10px;bottom:calc(26px + var(--sab));background:rgba(255,255,255,.95);border-radius:12px;padding:7px 10px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:3px}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend{cursor:pointer;user-select:none}
+.legend.min{flex-direction:row;gap:5px;padding:8px}
+.legend.min span{font-size:0;gap:0}
+.leaflet-control-attribution{font-size:10px}
+.leaflet-bottom.leaflet-left{display:none}
+
+/* ---------- markers ---------- */
+.mk{background:none;border:0}
+.dot{width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);margin:6px;transition:transform .15s}
+.dot{background:#8a9896}
+.dot.P{background:var(--prim)}
+.dot.S{background:var(--sec)}
+.dot.PS{background:linear-gradient(90deg,var(--prim) 50%,var(--sec) 50%)}
+.dot.ap{border:2.5px dashed #14201f;opacity:.75}
+.dot.ap.legend-ap{background:#9aa7a5}
+.mk.sel .dot{transform:scale(1.55);box-shadow:0 0 0 4px rgba(15,95,92,.35),0 1px 6px rgba(0,0,0,.5)}
+.legend .dot{margin:0;width:12px;height:12px;border-width:2px;flex:none}
+.cl{background:none}
+.cl div{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;background:rgba(15,95,92,.9);box-shadow:0 0 0 5px rgba(15,95,92,.25),0 2px 6px rgba(0,0,0,.25)}
+.me{width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
+
+/* ---------- bottom sheet ---------- */
+.scrim{position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;z-index:1000;left:0;right:0;bottom:0;max-height:82dvh;background:var(--bg);border-radius:18px 18px 0 0;box-shadow:0 -6px 30px rgba(0,0,0,.2);transform:translateY(110%);transition:transform .26s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding-bottom:var(--sab);max-width:640px;margin:0 auto}
+.sheet.open{transform:none}
+.sheet.school{max-height:64dvh}
+.sheet.drag{transition:none}
+.sh-head{flex:none;padding:8px 16px 4px;touch-action:none}
+.grab{width:40px;height:5px;border-radius:3px;background:#cfd8d6;margin:0 auto 6px}
+.sh-title{display:flex;align-items:center;gap:8px}
+.sh-title h2{flex:1;margin:0;font-size:18px;line-height:1.25}
+.close{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:#eef2f1;display:grid;place-items:center}
+.sh-body{overflow-y:auto;overscroll-behavior:contain;padding:4px 16px 18px;-webkit-overflow-scrolling:touch}
+@media (min-width:760px){
+  .sheet{left:12px;right:auto;top:calc(12px + var(--sat));bottom:12px;width:390px;max-height:none;border-radius:18px;transform:translateX(-110%);margin:0}
+  .sheet.open{transform:none}
+  .sheet.school{max-height:none}
+  .grab{display:none}
+  .top{left:410px}
+  .top.wide{left:0}
+  .scrim{display:none}
+}
+
+/* details */
+.gal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin:6px -16px 12px;padding:0 16px}
+.gal img{flex:none;width:86%;max-width:340px;height:160px;object-fit:cover;border-radius:12px;scroll-snap-align:center;background:#eef2f1}
+.gal img:only-child{width:100%;max-width:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600;background:#eef2f1;color:var(--ink)}
+.chip.P{background:#e3ecfd;color:#1d4ed8}
+.chip.S{background:#feecdf;color:#c2410c}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
+.fact{background:#f6f8f8;border-radius:12px;padding:9px 11px;min-width:0}
+.fact .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.fact .v{font-weight:600;overflow-wrap:anywhere}
+.fact.wide{grid-column:1/-1}
+.note{background:#fff7e6;border:1px solid #f5d79a;color:#7a4b00;border-radius:12px;padding:9px 11px;font-size:13px;margin:0 0 12px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:600;text-decoration:none;color:var(--ink);font-size:14.5px}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;grid-column:1/-1}
+.btn:active{filter:brightness(.95)}
+
+/* filters */
+.fgroup{margin:6px 0 16px}
+.fgroup h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 13px;font-size:14px;display:flex;gap:6px;align-items:center}
+.opt small{color:var(--muted)}
+.opt.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.opt.on small{color:#cfe7e5}
+select{width:100%;height:46px;border-radius:12px;border:1px solid var(--line);padding:0 12px;font-size:16px;background:#fff;color:var(--ink)}
+.frow{display:flex;gap:8px;position:sticky;bottom:-18px;background:#fff;padding:10px 0 4px;margin-top:4px}
+.frow .btn{flex:1}
+.frow .btn.primary{flex:2}
+
+/* list */
+.lhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 6px;font-size:13px;color:var(--muted)}
+.lhead button{border:0;background:var(--brand-2);color:var(--brand);font-weight:600;border-radius:999px;padding:6px 12px;font-size:13px}
+.li{display:flex;gap:10px;align-items:center;width:100%;border:0;background:#fff;text-align:left;padding:11px 2px;border-bottom:1px solid var(--line)}
+.li:active{background:#f6f8f8}
+.li .dot{margin:0;flex:none}
+.li .tx{flex:1;min-width:0}
+.li .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .s{font-size:12.5px;color:var(--muted)}
+.li .km{flex:none;font-size:12.5px;font-weight:600;color:var(--brand)}
+.toast{position:fixed;z-index:1200;left:50%;top:calc(104px + var(--sat));transform:translateX(-50%) translateY(-12px);background:#14201f;color:#fff;padding:9px 14px;border-radius:999px;font-size:13.5px;opacity:0;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.about{font-size:12.5px;color:var(--muted);margin-top:8px}
+.about a{color:var(--brand)}
+</style>
+</head>
+<body>
+<div id="map" aria-label="Map of TCF schools"></div>
+
+<div class="top" id="top">
+  <div class="top-row">
+    <label class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Search school, city or district" aria-label="Search schools">
+      <button class="clear" id="qclear" aria-label="Clear search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </label>
+    <button class="icon-btn" id="fbtn" aria-label="Filters">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      <span class="badge" id="fbadge"></span>
+    </button>
+  </div>
+  <div class="suggest" id="suggest"></div>
+  <div class="status"><div class="pill" id="pill"></div></div>
+</div>
+
+<div class="fabs">
+  <button class="fab" id="layerBtn" aria-label="Toggle satellite view" title="Satellite / map">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+  </button>
+  <button class="fab" id="listBtn" aria-label="Nearby schools list" title="Nearby list">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>
+  </button>
+  <button class="fab" id="locBtn" aria-label="Show my location" title="My location">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+  <button class="fab" id="homeBtn" aria-label="Show all of Pakistan" title="Zoom to all">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+</div>
+
+<div class="legend" id="legend" aria-label="Legend (tap to collapse)" role="button" tabindex="0">
+  <span><i class="dot P"></i>Primary</span>
+  <span><i class="dot S"></i>Secondary</span>
+  <span><i class="dot PS"></i>Both</span>
+  <span><i class="dot"></i>Level not listed</span>
+  <span><i class="dot ap legend-ap"></i>Approx. location</span>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="false" aria-labelledby="shTitle">
+  <div class="sh-head" id="shHead">
+    <div class="grab"></div>
+    <div class="sh-title"><h2 id="shTitle"></h2><button class="close" id="shClose" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  </div>
+  <div class="sh-body" id="shBody"></div>
+</section>
+<div class="toast" id="toast"></div>
+
+<script>/*__LEAFLET_JS__*/</script>
+<script>/*__CLUSTER_JS__*/</script>
+<script>
+const DATA = /*__DATA__*/;
+const META = /*__META__*/;
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ");
+const fmt = n => n.toLocaleString("en-US");
+const LEVEL = {P: "Primary", S: "Secondary", PS: "Primary + Secondary"};
+const BASE = "https://www.tcf.org.pk/schools/";
+
+// ---------- map ----------
+const map = L.map("map", {zoomControl: false, preferCanvas: false, tap: true, worldCopyJump: false, minZoom: 4, maxZoom: 19});
+const street = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+  maxZoom: 19, maxNativeZoom: 17, attribution: "Tiles &copy; Esri"
+}).addTo(map);
+const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+});
+const sat = L.layerGroup([
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, maxNativeZoom: 18, attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics"}),
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, maxNativeZoom: 18})
+]);
+const PK_BOUNDS = L.latLngBounds([[23.6, 60.8], [37.1, 77.9]]);
+map.fitBounds(PK_BOUNDS, {padding: [10, 10]});
+
+const cluster = L.markerClusterGroup({
+  chunkedLoading: true, showCoverageOnHover: false, spiderfyOnMaxZoom: true, zoomToBoundsOnClick: true,
+  maxClusterRadius: z => z < 8 ? 60 : z < 12 ? 50 : z < 15 ? 40 : 20,
+  iconCreateFunction: c => {
+    const n = c.getChildCount(); const s = n < 10 ? 34 : n < 50 ? 40 : n < 200 ? 48 : 56;
+    return L.divIcon({html: `<div>${n}</div>`, className: "cl", iconSize: [s, s]});
+  }
+});
+map.addLayer(cluster);
+
+// ---------- data ----------
+const schools = DATA.map(d => ({...d, hay: norm([d.n, d.d, d.p, d.r, LEVEL[d.c]].join(" "))}));
+const byId = new Map(schools.map(s => [s.i, s]));
+const icon = (s, sel) => L.divIcon({className: "mk" + (sel ? " sel" : ""), html: `<div class="dot ${s.c}${s.a ? " ap" : ""}"></div>`, iconSize: [28, 28], iconAnchor: [14, 14]});
+for (const s of schools) {
+  s.m = L.marker([s.la, s.lo], {icon: icon(s), title: s.n, keyboard: true, riseOnHover: true});
+  s.m.on("click", () => openSchool(s.i, {pan: true}));
+}
+
+// ---------- state ----------
+const F = {prov: new Set(), lvl: new Set(), shift: new Set(), dist: "", q: ""};
+let shown = schools.slice();
+let me = null, meLayer = null, selected = null, mode = null;
+
+function matches(s, ignoreQ) {
+  if (F.prov.size && !F.prov.has(s.p)) return false;
+  if (F.lvl.size && ![...F.lvl].some(l => s.c.includes(l))) return false;
+  if (F.shift.size && ![...F.shift].some(x => s.s.includes(x))) return false;
+  if (F.dist && s.d !== F.dist) return false;
+  if (!ignoreQ && F.q) { for (const t of F.q.split(" ")) if (t && !s.hay.includes(t)) return false; }
+  return true;
+}
+function apply() {
+  shown = schools.filter(s => matches(s));
+  cluster.clearLayers();
+  cluster.addLayers(shown.map(s => s.m));
+  const nf = F.prov.size + F.lvl.size + F.shift.size + (F.dist ? 1 : 0);
+  const b = $("#fbadge"); b.textContent = nf; b.classList.toggle("show", nf > 0);
+  const filtered = nf > 0 || F.q;
+  $("#pill").innerHTML = filtered
+    ? `<span><b>${fmt(shown.length)}</b> of ${fmt(schools.length)} schools</span><button id="pillClear">Clear</button>`
+    : `<span><b>${fmt(schools.length)}</b> TCF school campuses</span>`;
+  const pc = $("#pillClear"); if (pc) pc.onclick = resetAll;
+  if (mode === "list") renderList();
+}
+function resetAll() {
+  F.prov.clear(); F.lvl.clear(); F.shift.clear(); F.dist = ""; F.q = ""; $("#q").value = ""; $("#qclear").classList.remove("show");
+  hideSuggest(); apply(); if (mode === "filter") renderFilters();
+}
+function fitShown() {
+  if (!shown.length) { toast("No schools match"); return; }
+  if (shown.length === 1) { openSchool(shown[0].i, {fly: true}); return; }
+  map.flyToBounds(L.latLngBounds(shown.map(s => [s.la, s.lo])), {padding: [60, 60], maxZoom: 14, duration: .8});
+}
+
+// ---------- sheet ----------
+const sheet = $("#sheet"), scrim = $("#scrim");
+function openSheet(m, title, html) {
+  mode = m; $("#shTitle").textContent = title; $("#shBody").innerHTML = html; $("#shBody").scrollTop = 0;
+  sheet.classList.add("open"); sheet.classList.toggle("school", m === "school"); $("#top").classList.remove("wide");
+  scrim.classList.toggle("show", m !== "school");
+  document.querySelectorAll(".fab").forEach(f => f.classList.remove("on"));
+  if (m === "list") $("#listBtn").classList.add("on");
+}
+function closeSheet() {
+  sheet.classList.remove("open"); scrim.classList.remove("show"); $("#top").classList.add("wide");
+  mode = null; selectMarker(null); $("#listBtn").classList.remove("on");
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+}
+$("#shClose").onclick = closeSheet; scrim.onclick = closeSheet;
+map.on("click", () => { if (mode === "school") closeSheet(); hideSuggest(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { hideSuggest(); closeSheet(); } });
+$("#top").classList.add("wide");
+// swipe down to close
+(() => {
+  let y0 = null, dy = 0;
+  const h = $("#shHead"), body = $("#shBody");
+  const start = (e, force) => { if (!force && body.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; sheet.classList.add("drag"); };
+  const move = e => { if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) { sheet.style.transform = `translateY(${dy}px)`; if (e.cancelable && e.currentTarget === h) e.preventDefault(); } };
+  const end = () => { if (y0 === null) return; sheet.classList.remove("drag"); sheet.style.transform = ""; if (dy > 90) closeSheet(); y0 = null; };
+  h.addEventListener("touchstart", e => start(e, true), {passive: true});
+  h.addEventListener("touchmove", move, {passive: false});
+  h.addEventListener("touchend", end);
+})();
+
+// ---------- school details ----------
+function selectMarker(s) {
+  if (selected) selected.m.setIcon(icon(selected));
+  selected = s;
+  if (s) { s.m.setIcon(icon(s, true)); s.m.setZIndexOffset(1000); }
+}
+function dist(a, b) {
+  const R = 6371, r = Math.PI / 180, dLa = (b.la - a.la) * r, dLo = (b.lo - a.lo) * r;
+  const x = Math.sin(dLa / 2) ** 2 + Math.cos(a.la * r) * Math.cos(b.la * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+const km = d => d < 1 ? `${Math.round(d * 1000)} m` : d < 10 ? `${d.toFixed(1)} km` : `${fmt(Math.round(d))} km`;
+const gmaps = s => s.a
+  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("TCF " + s.n + " " + s.d)}`
+  : `https://www.google.com/maps/search/?api=1&query=${s.la},${s.lo}`;
+const gdir = s => s.a ? gmaps(s) : `https://www.google.com/maps/dir/?api=1&destination=${s.la},${s.lo}`;
+
+function openSchool(id, opt = {}) {
+  const s = byId.get(id); if (!s) return;
+  hideSuggest(); $("#q").blur();
+  selectMarker(s);
+  const imgs = (s.im || []).map(u => `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.remove()">`).join("");
+  const chips = [
+    ...(s.c.includes("P") ? [`<span class="chip P">Primary</span>`] : []),
+    ...(s.c.includes("S") ? [`<span class="chip S">Secondary</span>`] : []),
+    ...s.s.map(x => `<span class="chip">${esc(x)} shift</span>`)
+  ].join("");
+  const facts = [
+    ["District", s.d], ["Province", s.p], ["Region", s.r], ["Started", s.y], ["School units", s.u],
+    me ? ["Distance from you", km(dist(me, s))] : null,
+    ["Coordinates", s.a ? "Not published" : `${s.la.toFixed(5)}, ${s.lo.toFixed(5)}`]
+  ].filter(f => f && f[1]).map((f, i, a) => `<div class="fact${f[0] === "Coordinates" && a.length % 2 ? " wide" : ""}"><div class="k">${f[0]}</div><div class="v">${esc(f[1])}</div></div>`).join("");
+  const html = `
+    ${imgs ? `<div class="gal">${imgs}</div>` : ""}
+    <div class="chips">${chips}</div>
+    ${s.a ? `<div class="note">TCF hasn't published exact coordinates for this campus, so it's shown at the approximate centre of ${esc(s.d || "its district")}.</div>` : ""}
+    <div class="facts">${facts}</div>
+    <div class="actions">
+      <a class="btn primary" href="${gdir(s)}" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="m3 11 18-8-8 18-2-8-8-2Z"/></svg>${s.a ? "Find in Google Maps" : "Directions"}</a>
+      <a class="btn" href="${BASE + esc(s.l)}" target="_blank" rel="noopener">TCF page</a>
+      <button class="btn" id="shareBtn">Share</button>
+    </div>`;
+  openSheet("school", s.n, html);
+  $("#shareBtn").onclick = () => share(s);
+  history.replaceState(null, "", "#s=" + s.i);
+  const go = () => {
+    // keep the marker visible above the sheet (mobile) / right of panel (desktop)
+    const wide = innerWidth >= 760, sh = sheet.getBoundingClientRect();
+    const p = map.latLngToContainerPoint([s.la, s.lo]);
+    const tx = wide ? (sh.right + innerWidth) / 2 : innerWidth / 2;
+    const topH = $("#pill").getBoundingClientRect().bottom + 16;
+    const ty = wide ? innerHeight / 2 : (topH + innerHeight - sh.height) / 2;
+    map.panBy([p.x - tx, p.y - ty], {animate: true, duration: .35});
+  };
+  if (opt.fly) {
+    const z = Math.max(map.getZoom(), 15);
+    cluster.zoomToShowLayer(s.m, () => { if (map.getZoom() < z) map.setView([s.la, s.lo], z, {animate: false}); setTimeout(go, 280); });
+  } else if (opt.pan) setTimeout(go, 280);
+}
+async function share(s) {
+  const text = `${s.n} — ${[s.d, s.p].filter(Boolean).join(", ")}`;
+  const url = gmaps(s);
+  try {
+    if (navigator.share) { await navigator.share({title: s.n, text, url}); return; }
+    await navigator.clipboard.writeText(text + "\n" + url); toast("Copied to clipboard");
+  } catch (e) { if (e && e.name !== "AbortError") toast("Couldn't share"); }
+}
+
+// ---------- search ----------
+const q = $("#q"), sug = $("#suggest");
+let qt;
+function hideSuggest() { sug.classList.remove("show"); }
+function renderSuggest() {
+  if (!F.q || document.activeElement !== q) { hideSuggest(); return; }
+  const top = shown.slice(0, 8);
+  sug.innerHTML = (top.length ? top.map(s => `<button class="sg" data-id="${s.i}"><i class="dot ${s.c}${s.a ? " ap" : ""}" style="margin:0;flex:none"></i><span class="tx"><div class="t">${esc(s.n)}</div><div class="s">${esc([s.d, s.p].filter(Boolean).join(", "))}</div></span></button>`).join("")
+    : `<div class="sg" style="color:var(--muted)">No schools match “${esc(q.value)}”</div>`)
+    + (shown.length > 1 ? `<button class="sg all" data-all="1">Show all ${fmt(shown.length)} results on map</button>` : "");
+  sug.classList.add("show");
+}
+q.addEventListener("input", () => {
+  $("#qclear").classList.toggle("show", !!q.value);
+  clearTimeout(qt);
+  qt = setTimeout(() => { F.q = norm(q.value).trim().replace(/\s+/g, " "); apply(); renderSuggest(); }, 120);
+});
+q.addEventListener("focus", () => { if (F.q) renderSuggest(); });
+q.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); q.blur(); hideSuggest(); fitShown(); } });
+q.addEventListener("blur", () => setTimeout(hideSuggest, 200));
+sug.addEventListener("pointerdown", e => e.preventDefault()); // keep focus so click registers
+sug.addEventListener("click", e => {
+  const b = e.target.closest(".sg"); if (!b) return;
+  if (b.dataset.all) { q.blur(); hideSuggest(); fitShown(); }
+  else if (b.dataset.id) openSchool(+b.dataset.id, {fly: true});
+});
+$("#qclear").onclick = e => { e.preventDefault(); q.value = ""; F.q = ""; $("#qclear").classList.remove("show"); apply(); hideSuggest(); };
+
+// ---------- filters ----------
+function counts(key, fn) {
+  const saved = F[key]; F[key] = key === "dist" ? "" : new Set();
+  const c = {}; for (const s of schools) if (matches(s)) for (const v of fn(s)) c[v] = (c[v] || 0) + 1;
+  F[key] = saved; return c;
+}
+function renderFilters() {
+  const pc = counts("prov", s => [s.p]), lc = counts("lvl", s => s.c.split("").filter(x => x === "P" || x === "S")), sc = counts("shift", s => s.s), dc = counts("dist", s => [s.d]);
+  const opt = (grp, val, label, n) => `<button class="opt${(grp === "dist" ? F.dist === val : F[grp].has(val)) ? " on" : ""}" data-g="${grp}" data-v="${esc(val)}">${esc(label)} <small>${fmt(n || 0)}</small></button>`;
+  const dists = Object.keys(dc).filter(Boolean).sort();
+  const html = `
+    <div class="fgroup"><h3>Province</h3><div class="opts">${META.provinces.map(p => opt("prov", p, p, pc[p])).join("")}</div></div>
+    <div class="fgroup"><h3>School level</h3><div class="opts">${opt("lvl", "P", "Primary", lc.P)}${opt("lvl", "S", "Secondary", lc.S)}</div></div>
+    <div class="fgroup"><h3>Shift</h3><div class="opts">${META.shifts.map(x => opt("shift", x, x, sc[x])).join("")}</div></div>
+    <div class="fgroup"><h3>District / city</h3>
+      <select id="distSel"><option value="">All districts (${dists.length})</option>${dists.map(d => `<option value="${esc(d)}"${F.dist === d ? " selected" : ""}>${esc(d)} (${dc[d]})</option>`).join("")}</select></div>
+    <div class="frow"><button class="btn" id="fReset">Reset</button><button class="btn primary" id="fShow">Show ${fmt(shown.length)} schools</button></div>
+    <div class="about">Data from <a href="https://www.tcf.org.pk/our-schools/" target="_blank" rel="noopener">tcf.org.pk/our-schools</a>, collected ${esc(META.date)}. ${fmt(META.approx)} campuses have no published coordinates and are placed at their district centre (dashed markers).</div>`;
+  openSheet("filter", "Filter schools", html);
+  $("#distSel").onchange = e => { F.dist = e.target.value; apply(); renderFilters(); };
+  $("#fReset").onclick = resetAll;
+  $("#fShow").onclick = () => { closeSheet(); fitShown(); };
+}
+$("#shBody").addEventListener("click", e => {
+  const b = e.target.closest(".opt"); if (b) {
+    const g = b.dataset.g, v = b.dataset.v;
+    F[g].has(v) ? F[g].delete(v) : F[g].add(v);
+    if (g === "prov") F.dist = F.dist && schools.some(s => s.d === F.dist && (!F.prov.size || F.prov.has(s.p))) ? F.dist : "";
+    apply(); renderFilters(); return;
+  }
+  const li = e.target.closest(".li"); if (li) openSchool(+li.dataset.id, {fly: true});
+});
+$("#fbtn").onclick = () => { hideSuggest(); mode === "filter" ? closeSheet() : renderFilters(); };
+
+// ---------- nearby list ----------
+function renderList() {
+  const o = me || {la: map.getCenter().lat, lo: map.getCenter().lng};
+  const list = shown.map(s => [dist(o, s), s]).sort((a, b) => a[0] - b[0]).slice(0, 100);
+  const html = `
+    <div class="lhead"><span>${me ? "Sorted by distance from you" : "Sorted by distance from map centre"} · ${fmt(shown.length)} schools</span>${me ? "" : `<button id="useLoc">Use my location</button>`}</div>
+    ${list.map(([d, s]) => `<button class="li" data-id="${s.i}"><i class="dot ${s.c}${s.a ? " ap" : ""}"></i><span class="tx"><div class="t">${esc(s.n)}</div><div class="s">${esc([s.d, LEVEL[s.c]].filter(Boolean).join(" · "))}</div></span><span class="km">${km(d)}</span></button>`).join("")}
+    ${shown.length > 100 ? `<div class="about">Showing nearest 100. Use search or filters to narrow down.</div>` : ""}`;
+  openSheet("list", me ? "Schools near you" : "Nearby schools", html);
+  const u = $("#useLoc"); if (u) u.onclick = () => locate(true);
+}
+$("#listBtn").onclick = () => mode === "list" ? closeSheet() : renderList();
+
+// ---------- location ----------
+function locate(thenList) {
+  if (!navigator.geolocation) { toast("Location isn't available on this device"); return; }
+  const b = $("#locBtn"); b.classList.add("busy");
+  navigator.geolocation.getCurrentPosition(p => {
+    b.classList.remove("busy"); b.classList.add("on");
+    me = {la: p.coords.latitude, lo: p.coords.longitude};
+    if (meLayer) meLayer.remove();
+    meLayer = L.layerGroup([
+      L.circle([me.la, me.lo], {radius: p.coords.accuracy, color: "#1a73e8", weight: 1, fillOpacity: .08, interactive: false}),
+      L.marker([me.la, me.lo], {icon: L.divIcon({className: "", html: '<div class="me"></div>', iconSize: [18, 18]}), interactive: false, zIndexOffset: 2000})
+    ]).addTo(map);
+    const near = shown.map(s => [dist(me, s), s]).sort((a, b) => a[0] - b[0]).slice(0, 5);
+    const pts = [[me.la, me.lo], ...near.map(([, s]) => [s.la, s.lo])];
+    map.flyToBounds(L.latLngBounds(pts), {padding: [70, 70], maxZoom: 14, duration: .9});
+    if (near.length) toast(`Nearest TCF school: ${km(near[0][0])} away`);
+    if (thenList || mode === "list") setTimeout(renderList, 950);
+  }, err => {
+    b.classList.remove("busy");
+    toast(err.code === 1 ? "Location permission denied" : "Couldn't get your location");
+  }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 60000});
+}
+$("#locBtn").onclick = () => locate(false);
+$("#homeBtn").onclick = () => { closeSheet(); shown.length && shown.length < schools.length ? fitShown() : map.flyToBounds(PK_BOUNDS, {duration: .8}); };
+const BASES = [[street, "Street map"], [sat, "Satellite view"], [osm, "OpenStreetMap (more local detail)"]];
+let base = 0;
+$("#layerBtn").onclick = () => {
+  map.removeLayer(BASES[base][0]); base = (base + 1) % BASES.length; BASES[base][0].addTo(map);
+  $("#layerBtn").classList.toggle("on", base !== 0);
+  toast(BASES[base][1]);
+};
+
+const lg = $("#legend");
+if (localStorage.getItem("tcfLegendMin") === "1") lg.classList.add("min");
+lg.onclick = () => { lg.classList.toggle("min"); try { localStorage.setItem("tcfLegendMin", lg.classList.contains("min") ? "1" : "0"); } catch (e) {} };
+
+let tt;
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 2400); }
+
+// ---------- init ----------
+apply();
+const h = location.hash.match(/s=(\d+)/);
+if (h && byId.has(+h[1])) setTimeout(() => openSchool(+h[1], {fly: true}), 300);
+})();
+</script>
+</body>
+</html>
